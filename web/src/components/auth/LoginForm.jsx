@@ -135,12 +135,12 @@ const LoginForm = () => {
     (status.custom_oauth_providers || []).length > 0;
   const hasOAuthLoginOptions = Boolean(
     status.github_oauth ||
-      status.discord_oauth ||
-      status.oidc_enabled ||
-      status.wechat_login ||
-      status.linuxdo_oauth ||
-      status.telegram_oauth ||
-      hasCustomOAuthProviders,
+    status.discord_oauth ||
+    status.oidc_enabled ||
+    status.wechat_login ||
+    status.linuxdo_oauth ||
+    status.telegram_oauth ||
+    hasCustomOAuthProviders,
   );
 
   useEffect(() => {
@@ -497,6 +497,8 @@ const LoginForm = () => {
   // 返回登录页面
   const handleBackToLogin = () => {
     setShowTwoFA(false);
+    setSubmitted(false);
+    setLoginLoading(false);
     setInputs({ username: '', password: '', wechat_verification_code: '' });
   };
 
@@ -871,6 +873,9 @@ const LoginForm = () => {
 
   // 微信登录模态框
   const renderWeChatLoginModal = () => {
+    if (!showWeChatLoginModal) {
+      return null;
+    }
     return (
       <Modal
         title={t('微信扫码登录')}
@@ -911,6 +916,9 @@ const LoginForm = () => {
 
   // 2FA验证弹窗
   const render2FAModal = () => {
+    if (!showTwoFA) {
+      return null;
+    }
     return (
       <Modal
         title={
@@ -958,8 +966,7 @@ const LoginForm = () => {
         style={{ top: '50%', left: '-120px' }}
       />
       <div className='w-full max-w-sm mt-[60px]'>
-        {showEmailLogin ||
-        !hasOAuthLoginOptions
+        {showEmailLogin || !hasOAuthLoginOptions
           ? renderEmailLoginForm()
           : renderOAuthOptions()}
         {renderWeChatLoginModal()}
