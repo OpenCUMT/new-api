@@ -30,6 +30,9 @@ import {
   buildRegistrationResult,
   isPasskeySupported,
   setUserData,
+  normalizeOrgEmail,
+  isOpenCUMTEmail,
+  OPENCUMT_EMAIL_HINT,
 } from '../../helpers';
 import { UserContext } from '../../context/User';
 import { Modal } from '@douyinfe/semi-ui';
@@ -169,7 +172,24 @@ const PersonalSetting = () => {
   }, [userState?.user?.setting]);
 
   const handleInputChange = (name, value) => {
-    setInputs((inputs) => ({ ...inputs, [name]: value }));
+    const nextValue = name === 'email' ? normalizeOrgEmail(value) : value;
+    setInputs((inputs) => ({ ...inputs, [name]: nextValue }));
+  };
+
+  const validateOrgEmail = () => {
+    const normalizedEmail = normalizeOrgEmail(inputs.email);
+    if (normalizedEmail !== inputs.email) {
+      handleInputChange('email', normalizedEmail);
+    }
+    if (!normalizedEmail) {
+      showError(`请输入 ${OPENCUMT_EMAIL_HINT} 邮箱地址`);
+      return false;
+    }
+    if (!isOpenCUMTEmail(normalizedEmail)) {
+      showError('仅支持使用 @opencumt.org 邮箱');
+      return false;
+    }
+    return true;
   };
 
   const generateAccessToken = async () => {
@@ -350,6 +370,9 @@ const PersonalSetting = () => {
   };
 
   const sendVerificationCode = async () => {
+    if (!validateOrgEmail()) {
+      return;
+    }
     if (inputs.email === '') {
       showError(t('请输入邮箱！'));
       return;
@@ -373,6 +396,9 @@ const PersonalSetting = () => {
   };
 
   const bindEmail = async () => {
+    if (!validateOrgEmail()) {
+      return;
+    }
     if (inputs.email_verification_code === '') {
       showError(t('请输入邮箱验证码！'));
       return;

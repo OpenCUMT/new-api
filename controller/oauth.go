@@ -256,9 +256,11 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 	} else {
 		user.DisplayName = provider.GetName() + " User"
 	}
-	if oauthUser.Email != "" {
-		user.Email = oauthUser.Email
+	oauthUser.Email = common.NormalizeEmail(oauthUser.Email)
+	if err := common.ValidateRestrictedRegisterEmail(oauthUser.Email); err != nil {
+		return nil, err
 	}
+	user.Email = oauthUser.Email
 	user.Role = common.RoleCommonUser
 	user.Status = common.UserStatusEnabled
 

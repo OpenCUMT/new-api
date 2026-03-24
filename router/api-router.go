@@ -92,6 +92,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.RequestCreemPay)
 				selfRoute.POST("/waffo/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
+				selfRoute.GET("/token_donation", controller.GetSelfTokenDonations)
+				selfRoute.POST("/token_donation", middleware.CriticalRateLimit(), controller.CreateTokenDonation)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
 				// 2FA routes
@@ -257,6 +259,14 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.PUT("/", controller.UpdateToken)
 			tokenRoute.DELETE("/:id", controller.DeleteToken)
 			tokenRoute.POST("/batch", controller.DeleteTokenBatch)
+		}
+
+		tokenDonationRoute := apiRouter.Group("/token_donation")
+		tokenDonationRoute.Use(middleware.AdminAuth())
+		{
+			tokenDonationRoute.GET("/", controller.GetAllTokenDonations)
+			tokenDonationRoute.POST("/:id/approve", controller.ApproveTokenDonation)
+			tokenDonationRoute.POST("/:id/reject", controller.RejectTokenDonation)
 		}
 
 		usageRoute := apiRouter.Group("/usage")

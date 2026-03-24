@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (C) 2025 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
@@ -31,6 +31,9 @@ import {
   setUserData,
   onDiscordOAuthClicked,
   onCustomOAuthClicked,
+  normalizeOrgEmail,
+  isOpenCUMTEmail,
+  OPENCUMT_EMAIL_HINT,
 } from '../../helpers';
 import Turnstile from 'react-turnstile';
 import {
@@ -81,7 +84,7 @@ const RegisterForm = () => {
     verification_code: '',
     wechat_verification_code: '',
   });
-  const { username, password, password2 } = inputs;
+  const { username, password, password2, email } = inputs;
   const [userState, userDispatch] = useContext(UserContext);
   const [statusState] = useContext(StatusContext);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
@@ -133,12 +136,12 @@ const RegisterForm = () => {
     (status.custom_oauth_providers || []).length > 0;
   const hasOAuthRegisterOptions = Boolean(
     status.github_oauth ||
-      status.discord_oauth ||
-      status.oidc_enabled ||
-      status.wechat_login ||
-      status.linuxdo_oauth ||
-      status.telegram_oauth ||
-      hasCustomOAuthProviders,
+    status.discord_oauth ||
+    status.oidc_enabled ||
+    status.wechat_login ||
+    status.linuxdo_oauth ||
+    status.telegram_oauth ||
+    hasCustomOAuthProviders,
   );
 
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -215,7 +218,26 @@ const RegisterForm = () => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
   }
 
+  const validateOrgEmail = () => {
+    const normalizedEmail = normalizeOrgEmail(email);
+    if (normalizedEmail !== email) {
+      handleChange('email', normalizedEmail);
+    }
+    if (!normalizedEmail) {
+      showInfo(`请输入 ${OPENCUMT_EMAIL_HINT} 邮箱地址`);
+      return false;
+    }
+    if (!isOpenCUMTEmail(normalizedEmail)) {
+      showInfo('仅支持使用 @opencumt.org 邮箱注册');
+      return false;
+    }
+    return true;
+  };
+
   async function handleSubmit(e) {
+    if (!validateOrgEmail()) {
+      return;
+    }
     if (password.length < 8) {
       showInfo('密码长度不得小于 8 位！');
       return;
@@ -255,7 +277,7 @@ const RegisterForm = () => {
   }
 
   const sendVerificationCode = async () => {
-    if (inputs.email === '') return;
+    if (!validateOrgEmail()) return;
     if (turnstileEnabled && turnstileToken === '') {
       showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
       return;
@@ -602,6 +624,35 @@ const RegisterForm = () => {
                   prefix={<IconLock />}
                 />
 
+                {!showEmailVerification && (
+                  <Form.Input
+                    field='email'
+                    label={t('邮箱')}
+                    placeholder={`请输入 ${OPENCUMT_EMAIL_HINT} 邮箱地址`}
+                    extraText={t('仅支持使用 @opencumt.org 邮箱')}
+                    name='email'
+                    type='email'
+                    value={email}
+                    onChange={(value) =>
+                      handleChange('email', normalizeOrgEmail(value))
+                    }
+                    prefix={<IconMail />}
+                    suffix={
+                      showEmailVerification ? (
+                        <Button
+                          onClick={sendVerificationCode}
+                          loading={verificationCodeLoading}
+                          disabled={disableButton || verificationCodeLoading}
+                        >
+                          {disableButton
+                            ? `${t('重新发送')} (${countdown})`
+                            : t('获取验证码')}
+                        </Button>
+                      ) : null
+                    }
+                  />
+                )}
+
                 {showEmailVerification && (
                   <>
                     <Form.Input
@@ -610,7 +661,10 @@ const RegisterForm = () => {
                       placeholder={t('输入邮箱地址')}
                       name='email'
                       type='email'
-                      onChange={(value) => handleChange('email', value)}
+                      value={email}
+                      onChange={(value) =>
+                        handleChange('email', normalizeOrgEmail(value))
+                      }
                       prefix={<IconMail />}
                       suffix={
                         <Button
@@ -781,8 +835,7 @@ const RegisterForm = () => {
         style={{ top: '50%', left: '-120px' }}
       />
       <div className='w-full max-w-sm mt-[60px]'>
-        {showEmailRegister ||
-        !hasOAuthRegisterOptions
+        {showEmailRegister || !hasOAuthRegisterOptions
           ? renderEmailRegisterForm()
           : renderOAuthOptions()}
         {renderWeChatLoginModal()}
