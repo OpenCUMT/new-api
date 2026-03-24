@@ -6,7 +6,9 @@ import {
   Select,
   Space,
   Table,
+  TextArea,
   Tabs,
+  TabPane,
   Tag,
   Typography,
 } from '@douyinfe/semi-ui';
@@ -19,9 +21,6 @@ import {
   timestamp2string,
 } from '../../helpers';
 import { CHANNEL_OPTIONS } from '../../constants';
-
-const { TextArea } = Input;
-const { TabPane } = Tabs;
 
 const SUPPORTED_DONATION_CHANNEL_TYPES = [
   1, 6, 3, 14, 17, 23, 20, 24, 25, 26, 27, 34, 40, 42, 43, 45, 48,
