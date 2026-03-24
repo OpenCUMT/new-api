@@ -32,3 +32,9 @@ func TestValidateRestrictedRegisterEmail(t *testing.T) {
 		})
 	}
 }
+
+func TestRestrictedRegisterEmailVerificationRequired(t *testing.T) {
+	if !RestrictedRegisterEmailVerificationRequired() {
+		t.Fatal("expected restricted register email verification to be required")
+	}
+}

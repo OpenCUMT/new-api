@@ -20,6 +20,10 @@ func IsRestrictedRegisterEmail(email string) bool {
 	return restrictedRegisterEmailRegex.MatchString(NormalizeEmail(email))
 }
 
+func RestrictedRegisterEmailVerificationRequired() bool {
+	return RestrictedRegisterEmailDomain != ""
+}
+
 func ValidateRestrictedRegisterEmail(email string) error {
 	if !IsRestrictedRegisterEmail(email) {
 		return fmt.Errorf("only @%s emails are allowed", RestrictedRegisterEmailDomain)
