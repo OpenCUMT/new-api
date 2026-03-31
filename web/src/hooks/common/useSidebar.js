@@ -43,6 +43,7 @@ export const DEFAULT_ADMIN_CONFIG = {
     enabled: true,
     topup: true,
     token_donation: true,
+    token_donation_ranking: true,
     personal: true,
   },
   admin: {

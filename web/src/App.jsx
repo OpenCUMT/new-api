@@ -34,6 +34,7 @@ import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
 import TokenDonation from './pages/TokenDonation';
+import TokenDonationRanking from './pages/TokenDonationRanking';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
 import Log from './pages/Log';
@@ -153,6 +154,14 @@ function App() {
           element={
             <PrivateRoute>
               <TokenDonation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/token-donation-ranking'
+          element={
+            <PrivateRoute>
+              <TokenDonationRanking />
             </PrivateRoute>
           }
         />

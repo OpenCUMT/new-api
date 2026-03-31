@@ -9,22 +9,22 @@ const (
 )
 
 type TokenDonation struct {
-	Id                 int     `json:"id"`
-	UserId             int     `json:"user_id" gorm:"index;not null"`
-	Type               int     `json:"type" gorm:"index;not null"`
-	Name               string  `json:"name" gorm:"type:varchar(128);not null"`
-	Key                string  `json:"key" gorm:"type:text;not null"`
-	BaseURL            *string `json:"base_url" gorm:"column:base_url;type:varchar(255)"`
-	Models             string  `json:"models" gorm:"type:text;not null"`
-	Group              string  `json:"group" gorm:"type:varchar(64);default:'default'"`
-	Remark             *string `json:"remark" gorm:"type:varchar(255)"`
-	OpenAIOrganization *string `json:"openai_organization" gorm:"type:varchar(255)"`
-	Status             string  `json:"status" gorm:"type:varchar(32);index;default:'pending'"`
-	ReviewNote         *string `json:"review_note" gorm:"type:varchar(255)"`
-	ChannelId          *int    `json:"channel_id" gorm:"index"`
-	CreatedTime        int64   `json:"created_time" gorm:"bigint;index"`
-	ReviewedTime       int64   `json:"reviewed_time" gorm:"bigint"`
-	ReviewedBy         int     `json:"reviewed_by" gorm:"index"`
+	Id          int     `json:"id"`
+	UserId      int     `json:"user_id" gorm:"index;not null"`
+	Type        int     `json:"type" gorm:"index;not null"`
+	Name        string  `json:"name" gorm:"type:varchar(128);not null"`
+	Key         string  `json:"key" gorm:"type:text;not null"`
+	BaseURL     *string `json:"base_url" gorm:"column:base_url;type:varchar(255)"`
+	TokenSource string  `json:"token_source" gorm:"type:varchar(255);not null;default:''"`
+	Models      string  `json:"models" gorm:"type:text;not null"`
+	Group       string  `json:"group" gorm:"type:varchar(64);default:'default'"`
+	Remark      *string `json:"remark" gorm:"type:varchar(255)"`
+	Status      string  `json:"status" gorm:"type:varchar(32);index;default:'pending'"`
+	ReviewNote  *string `json:"review_note" gorm:"type:varchar(255)"`
+	ChannelId   *int    `json:"channel_id" gorm:"index"`
+	CreatedTime int64   `json:"created_time" gorm:"bigint;index"`
+	ReviewedTime int64  `json:"reviewed_time" gorm:"bigint"`
+	ReviewedBy  int     `json:"reviewed_by" gorm:"index"`
 }
 
 type TokenDonationWithUser struct {

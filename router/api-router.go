@@ -94,6 +94,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.GET("/token_donation", controller.GetSelfTokenDonations)
 				selfRoute.POST("/token_donation", middleware.CriticalRateLimit(), controller.CreateTokenDonation)
+				selfRoute.GET("/token_donation/ranking", controller.GetTokenDonationRanking)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
 				// 2FA routes

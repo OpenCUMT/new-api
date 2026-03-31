@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -16,56 +17,48 @@ import (
 )
 
 var supportedTokenDonationChannelTypes = map[int]struct{}{
-	constant.ChannelTypeOpenAI:      {},
-	constant.ChannelTypeOpenAIMax:   {},
-	constant.ChannelTypeAzure:       {},
-	constant.ChannelTypeAnthropic:   {},
-	constant.ChannelTypeAli:         {},
-	constant.ChannelTypeTencent:     {},
-	constant.ChannelTypeOpenRouter:  {},
-	constant.ChannelTypeGemini:      {},
-	constant.ChannelTypeMoonshot:    {},
-	constant.ChannelTypeZhipu_v4:    {},
-	constant.ChannelTypePerplexity:  {},
-	constant.ChannelTypeCohere:      {},
-	constant.ChannelTypeSiliconFlow: {},
-	constant.ChannelTypeMistral:     {},
-	constant.ChannelTypeDeepSeek:    {},
-	constant.ChannelTypeVolcEngine:  {},
-	constant.ChannelTypeXai:         {},
+	constant.ChannelTypeOpenAI: {},
 }
 
 type tokenDonationCreateRequest struct {
-	Type               int    `json:"type"`
-	Name               string `json:"name"`
-	Key                string `json:"key"`
-	BaseURL            string `json:"base_url"`
-	Models             string `json:"models"`
-	Group              string `json:"group"`
-	Remark             string `json:"remark"`
-	OpenAIOrganization string `json:"openai_organization"`
+	Type        int    `json:"type"`
+	Name        string `json:"name"`
+	Key         string `json:"key"`
+	BaseURL     string `json:"base_url"`
+	TokenSource string `json:"token_source"`
+	Models      string `json:"models"`
+	Group       string `json:"group"`
+	Remark      string `json:"remark"`
 }
 
 type tokenDonationResponse struct {
-	Id                 int    `json:"id"`
-	UserId             int    `json:"user_id"`
-	Username           string `json:"username,omitempty"`
-	Email              string `json:"email,omitempty"`
-	Type               int    `json:"type"`
-	TypeName           string `json:"type_name"`
-	Name               string `json:"name"`
-	Key                string `json:"key"`
-	BaseURL            string `json:"base_url,omitempty"`
-	Models             string `json:"models"`
-	Group              string `json:"group"`
-	Remark             string `json:"remark,omitempty"`
-	OpenAIOrganization string `json:"openai_organization,omitempty"`
-	Status             string `json:"status"`
-	ReviewNote         string `json:"review_note,omitempty"`
-	ChannelId          *int   `json:"channel_id,omitempty"`
-	CreatedTime        int64  `json:"created_time"`
-	ReviewedTime       int64  `json:"reviewed_time"`
-	ReviewedBy         int    `json:"reviewed_by"`
+	Id          int    `json:"id"`
+	UserId      int    `json:"user_id"`
+	Username    string `json:"username,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Type        int    `json:"type"`
+	TypeName    string `json:"type_name"`
+	Name        string `json:"name"`
+	Key         string `json:"key"`
+	BaseURL     string `json:"base_url,omitempty"`
+	TokenSource string `json:"token_source"`
+	Models      string `json:"models"`
+	Group       string `json:"group"`
+	Remark      string `json:"remark,omitempty"`
+	Status      string `json:"status"`
+	ReviewNote  string `json:"review_note,omitempty"`
+	ChannelId   *int   `json:"channel_id,omitempty"`
+	CreatedTime int64  `json:"created_time"`
+	ReviewedTime int64 `json:"reviewed_time"`
+	ReviewedBy  int    `json:"reviewed_by"`
+}
+
+type tokenDonationRankingItem struct {
+	Rank              int    `json:"rank"`
+	UserId            int    `json:"user_id"`
+	Username          string `json:"username"`
+	DonationCount     int    `json:"donation_count"`
+	LatestDonationTime int64 `json:"latest_donation_time"`
 }
 
 func isSupportedTokenDonationChannelType(channelType int) bool {
@@ -130,16 +123,22 @@ func validateTokenDonationBaseURL(baseURL string) error {
 }
 
 func validateTokenDonationRequest(req *tokenDonationCreateRequest) error {
+	if req.Type == 0 {
+		req.Type = constant.ChannelTypeOpenAI
+	}
+	if req.Type != constant.ChannelTypeOpenAI {
+		return errors.New("token donation currently only supports OpenAI channel type")
+	}
 	if !isSupportedTokenDonationChannelType(req.Type) {
 		return errors.New("this channel type does not support token donation")
 	}
 	req.Name = strings.TrimSpace(req.Name)
 	req.Key = strings.TrimSpace(req.Key)
+	req.BaseURL = strings.TrimSpace(req.BaseURL)
+	req.TokenSource = strings.TrimSpace(req.TokenSource)
 	req.Models = normalizeCSV(req.Models)
 	req.Group = normalizeCSV(req.Group)
 	req.Remark = strings.TrimSpace(req.Remark)
-	req.OpenAIOrganization = strings.TrimSpace(req.OpenAIOrganization)
-	req.BaseURL = strings.TrimSpace(req.BaseURL)
 
 	if req.Name == "" {
 		return errors.New("channel name is required")
@@ -147,32 +146,37 @@ func validateTokenDonationRequest(req *tokenDonationCreateRequest) error {
 	if req.Key == "" {
 		return errors.New("token is required")
 	}
+	if req.BaseURL == "" {
+		return errors.New("base URL is required")
+	}
+	if req.TokenSource == "" {
+		return errors.New("token source is required")
+	}
 	if req.Models == "" {
 		return errors.New("models are required, separate multiple models with commas")
 	}
 	if req.Group == "" {
-		req.Group = "default"
+		return errors.New("group is required")
 	}
 	if len(req.Name) > 128 {
 		return errors.New("channel name is too long")
 	}
+	if len(req.TokenSource) > 255 {
+		return errors.New("token source is too long")
+	}
 	if len(req.Remark) > 255 {
 		return errors.New("remark is too long")
-	}
-	if len(req.OpenAIOrganization) > 255 {
-		return errors.New("OpenAI organization is too long")
 	}
 	if err := validateTokenDonationBaseURL(req.BaseURL); err != nil {
 		return err
 	}
 
 	channel := &model.Channel{
-		Type:               req.Type,
-		Name:               req.Name,
-		Key:                req.Key,
-		Models:             req.Models,
-		Group:              req.Group,
-		OpenAIOrganization: trimOptionalString(req.OpenAIOrganization),
+		Type:   req.Type,
+		Name:   req.Name,
+		Key:    req.Key,
+		Models: req.Models,
+		Group:  req.Group,
 	}
 	if req.BaseURL != "" {
 		channel.BaseURL = trimOptionalString(req.BaseURL)
@@ -196,43 +200,38 @@ func buildTokenDonationResponse(donation *model.TokenDonation, username string, 
 	if donation.ReviewNote != nil {
 		reviewNote = *donation.ReviewNote
 	}
-	openAIOrganization := ""
-	if donation.OpenAIOrganization != nil {
-		openAIOrganization = *donation.OpenAIOrganization
-	}
 	return tokenDonationResponse{
-		Id:                 donation.Id,
-		UserId:             donation.UserId,
-		Username:           username,
-		Email:              email,
-		Type:               donation.Type,
-		TypeName:           constant.GetChannelTypeName(donation.Type),
-		Name:               donation.Name,
-		Key:                model.MaskTokenKey(donation.Key),
-		BaseURL:            baseURL,
-		Models:             donation.Models,
-		Group:              donation.Group,
-		Remark:             remark,
-		OpenAIOrganization: openAIOrganization,
-		Status:             donation.Status,
-		ReviewNote:         reviewNote,
-		ChannelId:          donation.ChannelId,
-		CreatedTime:        donation.CreatedTime,
-		ReviewedTime:       donation.ReviewedTime,
-		ReviewedBy:         donation.ReviewedBy,
+		Id:           donation.Id,
+		UserId:       donation.UserId,
+		Username:     username,
+		Email:        email,
+		Type:         donation.Type,
+		TypeName:     constant.GetChannelTypeName(donation.Type),
+		Name:         donation.Name,
+		Key:          model.MaskTokenKey(donation.Key),
+		BaseURL:      baseURL,
+		TokenSource:  donation.TokenSource,
+		Models:       donation.Models,
+		Group:        donation.Group,
+		Remark:       remark,
+		Status:       donation.Status,
+		ReviewNote:   reviewNote,
+		ChannelId:    donation.ChannelId,
+		CreatedTime:  donation.CreatedTime,
+		ReviewedTime: donation.ReviewedTime,
+		ReviewedBy:   donation.ReviewedBy,
 	}
 }
 
 func buildChannelFromTokenDonation(donation *model.TokenDonation) *model.Channel {
 	channel := &model.Channel{
-		Type:               donation.Type,
-		Name:               donation.Name,
-		Key:                donation.Key,
-		OpenAIOrganization: donation.OpenAIOrganization,
-		Status:             common.ChannelStatusEnabled,
-		CreatedTime:        common.GetTimestamp(),
-		Models:             donation.Models,
-		Group:              donation.Group,
+		Type:        donation.Type,
+		Name:        donation.Name,
+		Key:         donation.Key,
+		Status:      common.ChannelStatusEnabled,
+		CreatedTime: common.GetTimestamp(),
+		Models:      donation.Models,
+		Group:       donation.Group,
 	}
 	if donation.BaseURL != nil && strings.TrimSpace(*donation.BaseURL) != "" {
 		baseURL := strings.TrimSpace(*donation.BaseURL)
@@ -240,7 +239,7 @@ func buildChannelFromTokenDonation(donation *model.TokenDonation) *model.Channel
 	}
 	tag := "token-donation"
 	channel.Tag = &tag
-	remark := fmt.Sprintf("[Donation #%d][User #%d] %s", donation.Id, donation.UserId, strings.TrimSpace(stringOrEmpty(donation.Remark)))
+	remark := fmt.Sprintf("[Donation #%d][User #%d][Source: %s] %s", donation.Id, donation.UserId, strings.TrimSpace(donation.TokenSource), strings.TrimSpace(stringOrEmpty(donation.Remark)))
 	remark = truncateString(strings.TrimSpace(remark), 255)
 	if remark != "" {
 		channel.Remark = &remark
@@ -261,17 +260,17 @@ func CreateTokenDonation(c *gin.Context) {
 	}
 
 	donation := &model.TokenDonation{
-		UserId:             userId,
-		Type:               req.Type,
-		Name:               req.Name,
-		Key:                req.Key,
-		BaseURL:            trimOptionalString(req.BaseURL),
-		Models:             req.Models,
-		Group:              req.Group,
-		Remark:             trimOptionalString(req.Remark),
-		OpenAIOrganization: trimOptionalString(req.OpenAIOrganization),
-		Status:             model.TokenDonationStatusPending,
-		CreatedTime:        common.GetTimestamp(),
+		UserId:      userId,
+		Type:        req.Type,
+		Name:        req.Name,
+		Key:         req.Key,
+		BaseURL:     trimOptionalString(req.BaseURL),
+		TokenSource: req.TokenSource,
+		Models:      req.Models,
+		Group:       req.Group,
+		Remark:      trimOptionalString(req.Remark),
+		Status:      model.TokenDonationStatusPending,
+		CreatedTime: common.GetTimestamp(),
 	}
 	if err := donation.Insert(); err != nil {
 		common.ApiError(c, err)
@@ -306,6 +305,66 @@ func GetAllTokenDonations(c *gin.Context) {
 		items = append(items, buildTokenDonationResponse(&donation.TokenDonation, donation.Username, donation.Email))
 	}
 	common.ApiSuccess(c, items)
+}
+
+func GetTokenDonationRanking(c *gin.Context) {
+	donations, err := model.GetTokenDonationsWithUsers(model.TokenDonationStatusApproved)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	userRankMap := make(map[int]*tokenDonationRankingItem)
+	for _, donation := range donations {
+		if donation == nil || donation.UserId <= 0 {
+			continue
+		}
+
+		item, ok := userRankMap[donation.UserId]
+		if !ok {
+			username := strings.TrimSpace(donation.Username)
+			if username == "" {
+				username = fmt.Sprintf("User #%d", donation.UserId)
+			}
+			item = &tokenDonationRankingItem{
+				UserId:   donation.UserId,
+				Username: username,
+			}
+			userRankMap[donation.UserId] = item
+		}
+
+		item.DonationCount++
+		latestTime := donation.ReviewedTime
+		if latestTime <= 0 {
+			latestTime = donation.CreatedTime
+		}
+		if latestTime > item.LatestDonationTime {
+			item.LatestDonationTime = latestTime
+		}
+	}
+
+	ranking := make([]*tokenDonationRankingItem, 0, len(userRankMap))
+	for _, item := range userRankMap {
+		if item.DonationCount > 0 {
+			ranking = append(ranking, item)
+		}
+	}
+
+	sort.SliceStable(ranking, func(i, j int) bool {
+		if ranking[i].DonationCount != ranking[j].DonationCount {
+			return ranking[i].DonationCount > ranking[j].DonationCount
+		}
+		if ranking[i].LatestDonationTime != ranking[j].LatestDonationTime {
+			return ranking[i].LatestDonationTime > ranking[j].LatestDonationTime
+		}
+		return ranking[i].UserId < ranking[j].UserId
+	})
+
+	for idx, item := range ranking {
+		item.Rank = idx + 1
+	}
+
+	common.ApiSuccess(c, ranking)
 }
 
 func ApproveTokenDonation(c *gin.Context) {

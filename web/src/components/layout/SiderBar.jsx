@@ -35,6 +35,7 @@ const routerMap = {
   channel: '/console/channel',
   token: '/console/token',
   token_donation: '/console/token-donation',
+  token_donation_ranking: '/console/token-donation-ranking',
   redemption: '/console/redemption',
   topup: '/console/topup',
   user: '/console/user',
@@ -52,7 +53,7 @@ const routerMap = {
   personal: '/console/personal',
 };
 
-const SiderBar = ({ onNavigate = () => {} }) => {
+const SiderBar = ({ onNavigate = () => { } }) => {
   const { t } = useTranslation();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const {
@@ -68,6 +69,20 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const [openedKeys, setOpenedKeys] = useState([]);
   const location = useLocation();
   const [routerMapState, setRouterMapState] = useState(routerMap);
+
+  const topLeftItems = useMemo(() => {
+    const items = [
+      {
+        text: t('捐赠排行'),
+        itemKey: 'token_donation_ranking',
+        to: '/token-donation-ranking',
+      },
+    ];
+
+    return items.filter((item) =>
+      isModuleVisible('personal', item.itemKey),
+    );
+  }, [t, isModuleVisible]);
 
   const workspaceItems = useMemo(() => {
     const items = [
@@ -445,6 +460,13 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             setOpenedKeys(data.openKeys);
           }}
         >
+          {/* 顶部快捷入口 */}
+          {topLeftItems.length > 0 && (
+            <div className='sidebar-section'>
+              {topLeftItems.map((item) => renderNavItem(item))}
+            </div>
+          )}
+
           {/* 聊天区域 */}
           {hasSectionVisibleModules('chat') && (
             <div className='sidebar-section'>

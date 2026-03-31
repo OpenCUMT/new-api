@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -20,21 +20,18 @@ import {
   showSuccess,
   timestamp2string,
 } from '../../helpers';
-import { CHANNEL_OPTIONS } from '../../constants';
 
-const SUPPORTED_DONATION_CHANNEL_TYPES = [
-  1, 6, 3, 14, 17, 23, 20, 24, 25, 26, 27, 34, 40, 42, 43, 45, 48,
-];
+const OPENAI_DONATION_CHANNEL_TYPE = 1;
 
 const defaultFormState = {
-  type: 1,
+  type: OPENAI_DONATION_CHANNEL_TYPE,
   name: '',
   key: '',
   base_url: '',
+  token_source: '',
   models: '',
   group: 'default',
   remark: '',
-  openai_organization: '',
 };
 
 const statusMeta = {
@@ -54,17 +51,6 @@ const TokenDonationPage = () => {
   const [adminStatus, setAdminStatus] = useState('pending');
   const [selfDonations, setSelfDonations] = useState([]);
   const [adminDonations, setAdminDonations] = useState([]);
-
-  const channelOptions = useMemo(
-    () =>
-      CHANNEL_OPTIONS.filter((item) =>
-        SUPPORTED_DONATION_CHANNEL_TYPES.includes(item.value),
-      ).map((item) => ({
-        value: item.value,
-        label: item.label,
-      })),
-    [],
-  );
 
   const handleFormChange = (field, value) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -126,17 +112,30 @@ const TokenDonationPage = () => {
       showError(t('请输入可用模型，多个模型请用英文逗号分隔'));
       return;
     }
+    if (!formState.group.trim()) {
+      showError(t('请输入调用分组'));
+      return;
+    }
+    if (!formState.base_url.trim()) {
+      showError(t('请输入 Base URL'));
+      return;
+    }
+    if (!formState.token_source.trim()) {
+      showError(t('请输入 token 来源'));
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
         ...formState,
+        type: OPENAI_DONATION_CHANNEL_TYPE,
         name: formState.name.trim(),
         key: formState.key.trim(),
         base_url: formState.base_url.trim(),
+        token_source: formState.token_source.trim(),
         models: formState.models.trim(),
-        group: (formState.group || 'default').trim(),
+        group: formState.group.trim(),
         remark: formState.remark.trim(),
-        openai_organization: formState.openai_organization.trim(),
       };
       const res = await API.post('/api/user/token_donation', payload);
       const { success, message } = res.data;
@@ -202,6 +201,12 @@ const TokenDonationPage = () => {
       width: 180,
     },
     {
+      title: t('token来源'),
+      dataIndex: 'token_source',
+      width: 180,
+      render: (text) => text || '-',
+    },
+    {
       title: t('模型'),
       dataIndex: 'models',
       width: 220,
@@ -262,6 +267,12 @@ const TokenDonationPage = () => {
       title: t('渠道名称'),
       dataIndex: 'name',
       width: 180,
+    },
+    {
+      title: t('token来源'),
+      dataIndex: 'token_source',
+      width: 200,
+      render: (text) => text || '-',
     },
     {
       title: t('模型'),
@@ -333,7 +344,7 @@ const TokenDonationPage = () => {
               </Typography.Text>
             </div>
             <div className='text-sm text-gray-500'>
-              {t('请确保捐赠的 Token 可长期稳定使用，并准确填写模型列表。')}
+              {t('除备注外其余字段均为必填，请务必准确填写渠道类型、渠道名称和 Base URL。')}
             </div>
           </div>
         </Card>
@@ -344,27 +355,30 @@ const TokenDonationPage = () => {
               <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
                 <div>
                   <div className='mb-2 text-sm font-medium'>
-                    {t('渠道类型')}
+                    {t('渠道类型（必填）')}
                   </div>
-                  <Select
-                    optionList={channelOptions}
-                    value={formState.type}
-                    onChange={(value) => handleFormChange('type', value)}
-                    style={{ width: '100%' }}
-                  />
+                  <Input value='OpenAI' disabled />
+                  <Typography.Text type='tertiary' className='mt-1 block text-xs'>
+                    {t('固定为 OpenAI 类型，无需选择。')}
+                  </Typography.Text>
                 </div>
                 <div>
                   <div className='mb-2 text-sm font-medium'>
-                    {t('渠道名称')}
+                    {t('渠道名称（必填）')}
                   </div>
                   <Input
                     value={formState.name}
                     onChange={(value) => handleFormChange('name', value)}
-                    placeholder={t('例如：协会成员捐赠 OpenAI 渠道')}
+                    placeholder={t('例如：xxx捐赠的GPT Plus')}
                   />
+                  <Typography.Text type='tertiary' className='mt-1 block text-xs'>
+                    {t('将在后台以该名称保存 token，例如：xxx捐赠的GPT Plus。')}
+                  </Typography.Text>
                 </div>
                 <div className='lg:col-span-2'>
-                  <div className='mb-2 text-sm font-medium'>{t('Token')}</div>
+                  <div className='mb-2 text-sm font-medium'>
+                    {t('Token（必填）')}
+                  </div>
                   <TextArea
                     value={formState.key}
                     onChange={(value) => handleFormChange('key', value)}
@@ -374,7 +388,7 @@ const TokenDonationPage = () => {
                 </div>
                 <div>
                   <div className='mb-2 text-sm font-medium'>
-                    {t('模型列表')}
+                    {t('模型列表（必填）')}
                   </div>
                   <Input
                     value={formState.models}
@@ -384,7 +398,7 @@ const TokenDonationPage = () => {
                 </div>
                 <div>
                   <div className='mb-2 text-sm font-medium'>
-                    {t('调用分组')}
+                    {t('调用分组（必填）')}
                   </div>
                   <Input
                     value={formState.group}
@@ -394,25 +408,29 @@ const TokenDonationPage = () => {
                 </div>
                 <div>
                   <div className='mb-2 text-sm font-medium'>
-                    {t('Base URL')}
+                    {t('Base URL（必填）')}
                   </div>
                   <Input
                     value={formState.base_url}
                     onChange={(value) => handleFormChange('base_url', value)}
-                    placeholder={t('可选，不填则使用该渠道类型默认地址')}
+                    placeholder={t('填写 token 来源提供的调用地址')}
                   />
+                  <Typography.Text type='tertiary' className='mt-1 block text-xs'>
+                    {t('填写 token 来源提供的调用地址，如果有多个，请填写 OpenAI 类型地址。')}
+                  </Typography.Text>
                 </div>
                 <div>
                   <div className='mb-2 text-sm font-medium'>
-                    {t('OpenAI Organization')}
+                    {t('token来源（必填）')}
                   </div>
                   <Input
-                    value={formState.openai_organization}
-                    onChange={(value) =>
-                      handleFormChange('openai_organization', value)
-                    }
-                    placeholder={t('可选，OpenAI / Azure 渠道可填写')}
+                    value={formState.token_source}
+                    onChange={(value) => handleFormChange('token_source', value)}
+                    placeholder={t('例如：OpenAI GPT Plus')}
                   />
+                  <Typography.Text type='tertiary' className='mt-1 block text-xs'>
+                    {t('AI 服务提供方及套餐，如：OpenAI GPT Plus。')}
+                  </Typography.Text>
                 </div>
                 <div className='lg:col-span-2'>
                   <div className='mb-2 text-sm font-medium'>{t('备注')}</div>
@@ -420,7 +438,7 @@ const TokenDonationPage = () => {
                     value={formState.remark}
                     onChange={(value) => handleFormChange('remark', value)}
                     autosize={{ minRows: 2, maxRows: 4 }}
-                    placeholder={t('可选，说明来源、用途或有效期')}
+                    placeholder={t('可选，说明有效期、剩余 token 量或其他细节')}
                   />
                 </div>
               </div>
@@ -445,7 +463,7 @@ const TokenDonationPage = () => {
                 dataSource={selfDonations}
                 columns={selfColumns}
                 pagination={false}
-                scroll={{ x: 1150 }}
+                scroll={{ x: 1330 }}
               />
             </Card>
           </TabPane>
@@ -472,7 +490,7 @@ const TokenDonationPage = () => {
                   dataSource={adminDonations}
                   columns={adminColumns}
                   pagination={false}
-                  scroll={{ x: 1400 }}
+                  scroll={{ x: 1600 }}
                 />
               </Card>
             </TabPane>
